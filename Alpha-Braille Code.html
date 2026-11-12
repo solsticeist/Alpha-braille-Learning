@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+    <html lang="en">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+        
+        <title>ABC Braille &amp; Trace</title>
+<style>
+
+
+@font-face {
+  font-family: 'OpenDyslexic';
+    src: url('OpenDyslexic-Regular.otf') format('opentype');
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+body {
+  --bg: #000;
+  --fg: #FF0;
+  --tr: #0FF;
+  --b: clamp(76px, 22vw, 100px);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'OpenDyslexic', Arial, sans-serif;
+  height: 100dvh;
+  display: flex;
+  justify-content: center;
+}
+
+.t2 { --bg: #FF0; --fg: rgb(31, 31, 255); --tr: #E00; }
+.t3 { --bg: #000; --fg: #FFF; --tr: #0F0; }
+.t4 { --bg: #FF0; --fg: #000; --tr: #00F; }
+.t5 { --bg: #030393; --fg: rgb(255, 255, 47); --tr: #0FF; }
+
+#app {
+  width: 100%;
+  max-width: 520px;
+  height: 100%;
+  padding: 10px 10px calc(78px + env(safe-area-inset-bottom));
+  position: relative;
+}
+
+#app.bad { animation: sh .2s 2; outline: 8px solid #F00; }
+#app.okf { outline: 8px solid #0F0; }
+
+@keyframes sh {
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+.s {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  overflow-y: auto;
+}
+.s.on { display: flex; }
+
+h1 { font-size: 2rem; text-align: center; }
+h2 { font-size: 1.6rem; }
+
+.g { background: rgb(75, 151, 192); }
+.c { background: rgb(181, 217, 132); }
+.o { background: rgb(70, 149, 61); }
+.r { background: rgb(187, 132, 217); }
+.p { background: rgb(209, 130, 197); }
+.w { background: rgb(18, 178, 193); }
+.y { background: rgb(73, 193, 152); }
+.m { background: rgb(197, 123, 213); }
+
+.bb, .pill, .cb, .key {
+  font-family: inherit;
+  font-weight: 900;
+  color: #000;
+  border: 5px solid var(--fg);
+  cursor: pointer;
+}
+
+.bb {
+  width: 100%;
+  min-height: 84px;
+  flex-shrink: 0;
+  font-size: 1.6rem;
+  border-radius: 26px;
+}
+
+.sw { min-height: 76px; font-size: 1.1rem; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+
+.cb {
+  width: var(--b);
+  height: var(--b);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: .8rem;
+  flex-shrink: 0;
+}
+.cb svg { width: 48%; height: 48%; fill: currentColor; }
+.cb:active, .bb:active { transform: scale(.92); }
+
+.pill { min-height: var(--b); padding: 0 22px; border-radius: 50px; font-size: 1.6rem; }
+.nav, .row { display: flex; justify-content: space-around; align-items: center; width: 100%; gap: 8px; flex-shrink: 0; }
+.big { font-size: 8rem; line-height: 1; font-weight: 900; }
+.cells, .tks { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+
+.bg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  padding: 16px;
+  border: 5px solid var(--fg);
+  border-radius: 30px;
+}
+.bg i { display: block; width: var(--d, 62px); height: var(--d, 62px); border-radius: 50%; border: 4px solid var(--fg); opacity: .35; }
+.bg i.on { background: var(--fg); opacity: 1; }
+
+.tks { width: 100%; min-height: 90px; border: 3px dashed var(--fg); border-radius: 16px; padding: 8px; gap: 8px; }
+.tk { text-align: center; font-weight: 900; font-size: 1.1rem; }
+.tk .bg { --d: 20px; padding: 6px; gap: 5px; border-width: 3px; border-radius: 12px; margin-bottom: 2px; }
+.tk.bad { color: #F00; }
+.tk.bad .bg { border-color: #F00; }
+.sp { width: 26px; }
+
+#cw { flex: 1; width: 100%; min-height: 150px; border: 5px solid var(--fg); border-radius: 22px; overflow: hidden; background: var(--bg); }
+canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+#modal { position: absolute; inset: 0; background: var(--bg); display: none; flex-direction: column; align-items: center; gap: 10px; padding: 12px; z-index: 9; }
+#mg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; overflow-y: auto; flex: 1; width: 100%; }
+.row .bb { width: auto; flex: 1; }
+.key { aspect-ratio: 1; font-size: 2.2rem; border-radius: 20px; background: var(--fg); color: var(--bg); }
+.settings { width: 100%; display: flex; flex-direction: column; gap: 14px; padding: 8px; }
+.setting { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: 1rem; }
+.setting input[type="range"] { grid-column: 1 / -1; width: 100%; min-height: 36px; accent-color: var(--tr); }
+.setting output { font-weight: 900; }
+#cue { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: none; z-index: 8; font: 900 5rem/1 Arial,sans-serif; text-shadow: 0 2px 8px #000; pointer-events: none; }
+#cue.show { display: block; }
+#selectAction { position: fixed; z-index: 20; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(260px, calc(100% - 24px)); min-height: 60px; font-size: 1.4rem; box-shadow: 0 0 0 4px var(--bg); }
+#selectAction:disabled { opacity: .65; }
+.pending { outline: 6px solid var(--tr); outline-offset: 3px; }
+@media (max-height: 760px), (max-width: 380px) {
+  #app { padding: 6px 8px calc(68px + env(safe-area-inset-bottom)); }
+  .s { gap: 6px; }
+  h1 { font-size: 1.45rem; }
+  h2 { font-size: 1.3rem; }
+  .bb { min-height: 60px; font-size: 1.2rem; border-width: 4px; border-radius: 20px; }
+  .sw { min-height: 52px; font-size: .85rem; }
+  .grid2 { gap: 6px; }
+  #selectAction { min-height: 48px; font-size: 1.15rem; }
+}
+</style>
+    </head>
+        <body class="t1"><div id="app">
+<div id="home" class="s on"><h1>ALPHA-BRAILLE LEARNING</h1>
+<button class="bb m" id="lb" onclick="toggleLang()">LANGUAGE: ENGLISH</button>
+<button class="bb w" onclick="go('settings')">SETTINGS</button>
+<div class="grid2">
+<button class="bb sw" style="background:#000;color:#FF0;border-color:#FF0" onclick="theme(1)">BLACK AND YELLOW</button>
+<button class="bb sw" style="background:rgb(250, 250, 15);color:rgb(8, 8, 222);border-color:#00F" onclick="theme(2)">YELLOW AND BLUE</button>
+<button class="bb sw" style="background:#000;color:#FFF;border-color:#FFF" onclick="theme(3)">BLACK AND WHITE</button>
+<button class="bb sw" style="background:#FF0;color:#000;border-color:#000" onclick="theme(4)">YELLOW AND BLACK</button>
+<button class="bb sw" style="background:#00008B;color:#FF0;border-color:#FF0" onclick="theme(5)">BLUE AND YELLOW</button></div>
+<button class="bb g" onclick="go('braille')">BRAILLE ALPHABET</button>
+<button class="bb o" onclick="go('game')">BRAILLE PRACTICE</button>
+<button class="bb c" onclick="go('write')">ALPHABET TRACING</button>
+</div>
+<div id="settings" class="s"><div class="nav"><button class="cb y" aria-label="Home" onclick="go('home')"><svg><use href="#house"/></svg>HOME</button><h2>SETTINGS</h2></div>
+<div class="settings">
+<label class="setting" for="speed">Speaking speed <output id="speedVal">0.85×</output><input id="speed" type="range" min="0.6" max="1.4" step="0.05" value="0.85" oninput="applySettings()"></label>
+<label class="setting" for="volume">Voice volume <output id="volumeVal">100%</output><input id="volume" type="range" min="0" max="1" step="0.05" value="1" oninput="applySettings()"></label>
+<label class="setting" for="buttonSize">Button size <output id="buttonSizeVal">88px</output><input id="buttonSize" type="range" min="64" max="120" step="4" value="88" oninput="applySettings()"></label>
+<label class="setting" for="strictness">Tracing help <output id="strictnessVal">1.0</output><input id="strictness" type="range" min="0.6" max="1.6" step="0.1" value="1" oninput="applySettings()"><span style="grid-column:1/-1">Lower values are stricter; higher values are easier.</span></label>
+<label class="setting" for="demoSpeed">Show-motion speed <output id="demoSpeedVal">3</output><input id="demoSpeed" type="range" min="1" max="5" step="1" value="3" oninput="applySettings()"></label>
+<label class="setting" for="readAloud">App read-aloud <output id="readAloudVal">ON</output><input id="readAloud" type="checkbox" checked onchange="applySettings()"><span style="grid-column:1/-1">Turn off to avoid overlap with TalkBack or VoiceOver.</span></label>
+</div></div>
+<div id="braille" class="s"> </div><div id="write" class="s"></div><div id="game" class="s"></div>
+<div id="cue" aria-live="polite" aria-atomic="true"></div>
+<div id="modal"><h2>PICK</h2><div id="mg"></div><div class="row"><button class="bb r" onclick="$('modal').style.display='none'">CLOSE</button><button class="bb y" onclick="$('modal').style.display='none';go('home')"><svg aria-hidden="true" viewBox="0 0 100 100" style="width:1.1em;height:1.1em;vertical-align:middle;fill:currentColor"><use href="#house"/></svg> HOME</button></div></div></div>
+<button id="selectAction" class="bb w" type="button" onclick="commitPending()" aria-label="Select the announced button">SELECT</button>
+<div id="announce" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
+<svg width="0" height="0" style="position:absolute"><defs>
+<!-- icons traced from the supplied vector files -->
+<symbol id="undo" viewBox="1110 400 490 320"><path d="M1120 553L1295 410V495C1450 497 1560 580 1590 713C1540 625 1450 615 1300 615V696Z"/></symbol>
+<symbol id="redo" viewBox="1110 400 490 320"><path transform="matrix(-1 0 0 1 2710 0)" d="M1120 553L1295 410V495C1450 497 1560 580 1590 713C1540 625 1450 615 1300 615V696Z"/></symbol>
+<symbol id="house" viewBox="0 0 100 100"><path d="M10 52 50 14l40 38" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 50 50 25l28 25v30H58V60H42v20H22z"/></symbol>
+<symbol id="snd" viewBox="0 0 100 100"><path d="M8 38h18l24-20v64L26 62H8z"/><path d="M64 36q14 14 0 28M76 24q26 26 0 52" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></symbol>
+<symbol id="eye" viewBox="0 0 100 100"><path fill-rule="evenodd" d="M4 50Q50 8 96 50Q50 92 4 50zM50 36a14 14 0 1 0 .1 0z"/></symbol>
+<symbol id="x" viewBox="0 0 100 100"><path d="M20 20 80 80M80 20 20 80" stroke="currentColor" stroke-width="16" stroke-linecap="round"/></symbol>
+<symbol id="prv" viewBox="0 0 100 100"><path d="M78 10 22 50 78 90z"/></symbol><symbol id="nxt" viewBox="0 0 100 100"><path d="M22 10 78 50 22 90z"/></symbol>
+<symbol id="grid" viewBox="0 0 100 100"><path d="M10 10h24v24H10zM38 10h24v24H38zM66 10h24v24H66zM10 38h24v24H10zM38 38h24v24H38zM66 38h24v24H66zM10 66h24v24H10zM38 66h24v24H38zM66 66h24v24H66z"/></symbol>
+</defs></svg>
+<script>
+// ================= TEACHER SETTINGS =================
+const CONFIG={
+  recordings:true,      // true = play your recorded voice files; if a file is missing the computer voice is used
+  audioFolder:'audio/', // files go in audio/en/ and audio/fil/  (A.mp3, B.mp3 ... NG.mp3, NYE.mp3 for Ñ, sentence1.mp3 ...)
+  strictness:1          // tracing tolerance: 0.8 = stricter, 1.3 = easier
+};
+const SENTENCES={EN:['CAT','A BIG DOG','I SEE A SUN'],FIL:['ASO','MAY PUSA','ANG NGIPIN']}; // edit freely (capital letters)
+// letter | sound | example word  (same order as the letter lists)
+const PH={EN:'ah apple|buh ball|kuh cat|duh dog|eh egg|fuh fish|guh goat|huh hat|ih igloo|juh jam|kuh kite|luh lion|muh moon|nuh nest|oh octopus|puh pig|kwuh queen|ruh rabbit|sss sun|tuh tiger|uh umbrella|vuh van|wuh water|ks box|yuh yo-yo|zzz zebra',
+FIL:'ah aso|buh bola|kuh calamansi|da daga|eh elepante|fa fiesta|ga gatas|ha hipon|ee isda|ja jeep|ka kabayo|la laba|ma mansanas|na niyog|nya piña|nga ngipin|oh oso|pa pusa|kwa Quezon|ra rosas|sa saging|ta tubig|oo ubas|va van|wa walis|eks xylophone|ya yakap|za zebra'};
+for(const k in PH)PH[k]=PH[k].split('|').map(s=>s.split(' '));
+const EN='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),FL='A B C D E F G H I J K L M N Ñ NG O P Q R S T U V W X Y Z'.split(' '); // Filipino alphabet (28)
+const BR={};'1 12 14 145 15 124 1245 125 24 245 13 123 134 1345 135 1234 12345 1235 234 2345 136 1236 2456 1346 13456 1356'.split(' ').forEach((c,i)=>BR[EN[i]]=c);BR['Ñ']='12456'; // NG is shown as N + G
+const FB={EN:{off:['Oops! Try again.','Stay on the line.'],good:['Good!','Keep going!','Nice!'],end:'Go all the way to the end.',start:n=>'Start at green dot '+n+'.',done:L=>'Great job! You wrote '+L+'!',watch:'Watch me.',turn:'Now you try!',wrong:'Try again!',win:'You made the sentence! Great job!',unk:'I do not know this card.'},
+FIL:{off:['Ay! Subukan muli.','Manatili sa linya.'],good:['Magaling!','Ituloy mo!','Ang galing!'],end:'Ituloy hanggang dulo.',start:n=>'Magsimula sa berdeng tuldok '+n+'.',done:L=>'Napakahusay! Naisulat mo ang '+L+'!',watch:'Panoorin mo.',turn:'Ikaw naman!',wrong:'Subukan muli!',win:'Nabuo mo ang pangungusap! Magaling!',unk:'Hindi ko kilala ang kard.'}};
+const $=i=>document.getElementById(i),f=()=>FB[lang],rnd=a=>a[Math.random()*a.length|0],dd=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+let lang='EN',idx=0,upper=true,scr='home',hist=[],redo=[],cur=null,drawing=false,demo=null,strokes=[],tol=30,built=[],tgt=0,nfcOn=false,aud=null,cv,c,cueTimer;
+let pendingButton=null,committing=false;
+const letters=()=>lang==='EN'?EN:FL,cl=()=>letters()[idx],disp=()=>upper?cl():cl().toLowerCase();
+
+//  VOICE 
+function tts(t){if(!$('readAloud').checked)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=lang==='EN'?'en-US':'fil-PH';u.rate=Number($('speed').value);u.volume=Number($('volume').value);speechSynthesis.speak(u)}
+function announce(t){const live=$('announce');if(live){live.textContent='';setTimeout(()=>{live.textContent=t},20)}}
+function say(t){if(aud)aud.pause();announce(t);tts(t)}
+function buttonName(button){return (button.getAttribute('aria-label')||button.innerText||button.textContent||'Button').replace(/\s+/g,' ').trim()}
+function commitPending(){if(!pendingButton){say('No button selected. Choose a button first.');return}const button=pendingButton;pendingButton=null;button.classList.remove('pending');committing=true;button.click();committing=false}
+document.addEventListener('click',e=>{const button=e.target.closest('button');if(!button||button.id==='selectAction'||committing)return;e.preventDefault();e.stopImmediatePropagation();if(pendingButton)pendingButton.classList.remove('pending');pendingButton=button;button.classList.add('pending');say(`${buttonName(button)}. Press SELECT to continue, or choose another button.`)},true);
+function play(file,text){speechSynthesis.cancel();if(aud)aud.pause();if(!$('readAloud').checked)return;if(!CONFIG.recordings)return tts(text);let used=0;const bk=()=>{if(!used++)tts(text)};aud=new Audio(CONFIG.audioFolder+lang.toLowerCase()+'/'+file+'.mp3');aud.volume=Number($('volume').value);aud.onerror=bk;aud.play().catch(bk)}
+const fileOf=L=>L==='Ñ'?'NYE':L;
+function sayLetter(){const L=cl(),[s,w]=PH[lang][idx];play(fileOf(L),lang==='EN'?`${L}. ${s}. ${L} is for ${w}.`:`${L}. ${s}. ${L} ay para sa ${w}.`)}
+
+//  UI BUILD 
+const btn=(k,i,l,fn)=>`<button class="cb ${k}" aria-label="${l}" onclick="${fn}"><svg><use href="#${i}"/></svg>${l}</button>`;
+const home=btn('y','house','HOME',"go('home')"),keys=btn('w','grid','LETTERS','pick()');
+const cell=code=>`<div class="bg">${[1,4,2,5,3,6].map(d=>`<i class="${code.includes(d)?'on':''}"></i>`).join('')}</div>`;
+const brailleOf=t=>t==='NG'?[BR.N,BR.G]:t===' '?[]:[BR[t]];
+$('braille').innerHTML=`<div class="nav">${home}<h2>BRAILLE</h2>${keys}</div><div id="bl" class="big"></div><div id="bw" style="font-size:1.6rem"></div><div id="bc" class="cells"></div><div class="row">${btn('c','prv','BACK','step(-1)')}${btn('g','snd','SOUND','sayLetter()')}${btn('c','nxt','NEXT','step(1)')}</div>`;
+$('write').innerHTML=`<div class="nav">${home}<button class="pill y" id="chip" onclick="pick()"></button><button class="pill c" id="case" onclick="toggleCase()"></button></div><div id="cw"><canvas id="cv"></canvas></div><div class="row">${btn('o','undo','UNDO','undo()')}${btn('p','redo','REDO','redoS()')}${btn('r','x','CLEAR','clr()')}</div><div class="row">${btn('c','prv','BACK','step(-1)')}${btn('w','eye','SHOW','toggleShow()')}${btn('g','snd','SOUND','sayLetter()')}${btn('c','nxt','NEXT','step(1)')}</div>`;
+$('game').innerHTML=`<div class="nav">${home}<h2>WORD TO BRAILLE!</h2>${keys}</div><div style="font-size:1.3rem">MAKE THIS:</div><div id="gt" class="tks"></div><div style="font-size:1.3rem">YOUR TURN:</div><div id="gb" class="tks"></div><div class="row">${btn('o','undo','UNDO','gUndo()')}${btn('g','snd','SOUND','gSay()')}${btn('c','grid','LETTERS','pick()')}</div>`;
+cv=$('cv');c=cv.getContext('2d');
+
+function go(s){stopDemo();scr=s;document.querySelectorAll('.s').forEach(e=>e.classList.toggle('on',e.id===s));if(!nfcOn)startNFC();
+  if(s==='write')setTimeout(()=>{fit();refresh();sayLetter()},30);else if(s==='braille'){refresh();sayLetter()}else if(s==='game')newGame(0);else say('Hello!')}
+function theme(n){const names=['','Black and yellow','Yellow and blue','Black and white','Yellow and black','Blue and yellow'];document.body.className='t'+n;draw();say('Colors changed to '+names[n]+'.')}
+function toggleLang(){lang=lang==='EN'?'FIL':'EN';idx=0;$('lb').textContent='LANGUAGE: '+(lang==='EN'?'ENGLISH':'FILIPINO');say(lang==='EN'?'English':'Filipino')}
+function step(d){idx=(idx+d+letters().length)%letters().length;refresh();sayLetter()}
+function toggleCase(){upper=!upper;refresh();say(upper?'Big letters':'Small letters')}
+function refresh(){const L=cl();$('bl').textContent=L;$('bw').textContent=PH[lang][idx].join(' · ');$('bc').innerHTML=brailleOf(L).map(cell).join('');
+  $('chip').textContent=L+' '+L.toLowerCase();$('case').textContent=upper?'ABC':'abc';wipe();build();draw()}
+function pick(){const g=$('mg');g.innerHTML='';letters().concat(scr==='game'?['SPACE']:[]).forEach(L=>{const b=document.createElement('button');b.className='key';b.textContent=L;if(L==='SPACE')b.style.gridColumn='span 4';b.onclick=()=>{$('modal').style.display='none';choose(L)};g.appendChild(b)});$('modal').style.display='flex'}
+function choose(L){if(scr==='game')return gameIn(L==='SPACE'?' ':L);idx=letters().indexOf(L);refresh();sayLetter()}
+function flash(ok){const a=$('app'),cue=$('cue');a.classList.remove('okf','bad');a.classList.add(ok?'okf':'bad');cue.textContent=ok?'✓':'✗';cue.setAttribute('aria-label',ok?'Correct':'Try again');cue.classList.add('show');clearTimeout(cueTimer);if(navigator.vibrate)navigator.vibrate(ok?[80,60,200]:150);cueTimer=setTimeout(()=>{a.classList.remove('okf','bad');cue.classList.remove('show')},650)}
+function applySettings(){
+  $('speedVal').textContent=Number($('speed').value).toFixed(2)+'×';$('volumeVal').textContent=Math.round($('volume').value*100)+'%';
+  $('buttonSizeVal').textContent=$('buttonSize').value+'px';$('strictnessVal').textContent=Number($('strictness').value).toFixed(1);$('demoSpeedVal').textContent=$('demoSpeed').value;
+  $('readAloudVal').textContent=$('readAloud').checked?'ON':'OFF';document.body.style.setProperty('--b',$('buttonSize').value+'px');
+  CONFIG.strictness=Number($('strictness').value);if(scr==='write'){build();draw()}
+}
+
+// NFC
+async function startNFC(){if(nfcOn||!('NDEFReader' in window))return;try{const r=new NDEFReader();await r.scan();nfcOn=true;r.onreading=e=>{for(const x of e.message.records)if(x.recordType==='text')tag(new TextDecoder(x.encoding||'utf-8').decode(x.data))};r.onreadingerror=()=>say('Could not read this NFC tag. Try again.')}catch(e){nfcOn=false;console.warn('NFC scan could not start:',e)}}
+function tag(t){t=t.trim().toUpperCase();if(!letters().includes(t))return say(f().unk);if(scr==='home')go('braille');choose(t)}
+
+// SENTENCE GAME 
+const toks=s=>lang==='EN'?[...s]:s.match(/NG|Ñ|[A-Z]| /g);
+const row=(t,b)=>t.map((x,i)=>x===' '?'<div class="sp"></div>':`<div class="tk${b&&b[i].bad?' bad':''}"><div class="cells">${brailleOf(x).map(cell).join('')}</div>${x}</div>`).join('');
+function newGame(n){tgt=n%SENTENCES[lang].length;built=[];renderGame();gSay()}
+function renderGame(){$('gt').innerHTML=row(toks(SENTENCES[lang][tgt]));$('gb').innerHTML=row(built.map(b=>b.t),built)}
+function gSay(){play('sentence'+(tgt+1),SENTENCES[lang][tgt])}
+function gUndo(){built.pop();renderGame()}
+function gameIn(x){const t=toks(SENTENCES[lang][tgt]);if(built.length>=t.length||built.some(b=>b.bad))return;const ok=t[built.length]===x;built.push({t:x,bad:!ok});renderGame();
+  if(!ok){flash(0);say(f().wrong);setTimeout(()=>{built.pop();renderGame()},1000);return} // wrong letter is removed automatically
+  if(x!==' ')play(fileOf(x),x);
+  if(built.length===t.length){flash(1);setTimeout(()=>say(f().win),900);setTimeout(()=>newGame(tgt+1),4200)}}
+
+// LETTER SHAPES (skeleton strokes, drawn in order) 
+function A(cx,cy,rx,ry,a0,a1){const p=[],n=Math.max(8,Math.ceil(Math.abs(a1-a0)/12));for(let i=0;i<=n;i++){const a=(a0+(a1-a0)*i/n)*Math.PI/180;p.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return p}
+const S=(...p)=>p.flatMap(q=>typeof q[0]==='number'?[q]:q);
+const U={A:[S([.5,0],[0,1]),S([.5,0],[1,1]),S([.2,.66],[.8,.66])],B:[S([0,0],[0,1]),S([0,0],[.6,0],A(.6,.25,.35,.25,-90,90),[0,.5]),S([0,.5],[.62,.5],A(.62,.75,.38,.25,-90,90),[0,1])],C:[A(.5,.5,.5,.5,-40,-320)],D:[S([0,0],[0,1]),S([0,0],[.4,0],A(.4,.5,.6,.5,-90,90),[0,1])],E:[S([0,0],[0,1]),S([0,0],[1,0]),S([0,.5],[.85,.5]),S([0,1],[1,1])],F:[S([0,0],[0,1]),S([0,0],[1,0]),S([0,.5],[.85,.5])],G:[S(A(.5,.5,.5,.5,-40,-360),[.55,.5])],H:[S([0,0],[0,1]),S([1,0],[1,1]),S([0,.5],[1,.5])],I:[S([.5,0],[.5,1])],J:[S([.85,0],[.85,.68],A(.45,.68,.4,.32,0,170))],K:[S([0,0],[0,1]),S([1,0],[0,.62]),S([.32,.42],[1,1])],L:[S([0,0],[0,1],[1,1])],M:[S([0,1],[0,0],[.5,.85],[1,0],[1,1])],N:[S([0,1],[0,0],[1,1],[1,0])],O:[A(.5,.5,.5,.5,-90,-450)],P:[S([0,0],[0,1]),S([0,0],[.6,0],A(.6,.27,.4,.27,-90,90),[0,.54])],Q:[A(.5,.5,.5,.5,-90,-450),S([.6,.7],[1,1])],R:[S([0,0],[0,1]),S([0,0],[.6,0],A(.6,.27,.4,.27,-90,90),[0,.54]),S([.45,.54],[1,1])],S:[S(A(.5,.26,.45,.26,-20,-270),A(.5,.76,.5,.24,-90,160))],T:[S([0,0],[1,0]),S([.5,0],[.5,1])],U:[S([0,0],[0,.62],A(.5,.62,.5,.38,180,0),[1,0])],V:[S([0,0],[.5,1],[1,0])],W:[S([0,0],[.25,1],[.5,.15],[.75,1],[1,0])],X:[S([0,0],[1,1]),S([1,0],[0,1])],Y:[S([0,0],[.5,.5]),S([1,0],[.5,.5],[.5,1])],Z:[S([0,0],[1,0],[0,1],[1,1])]};
+const L={a:[S(A(.45,.68,.42,.32,-10,-370)),S([.9,.3],[.9,1])],b:[S([0,0],[0,1]),A(.5,.64,.5,.36,180,540)],c:[A(.5,.5,.5,.5,-40,-320)],d:[A(.5,.64,.5,.36,0,-360),S([1,0],[1,1])],e:[S([0,.5],[1,.5],A(.5,.5,.5,.5,0,-320))],f:[S(A(.78,.18,.3,.18,-30,-180),[.48,1]),S([0,.32],[.95,.32])],g:[A(.45,.35,.45,.35,0,-360),S([.92,0],[.92,.72],A(.5,.72,.42,.28,0,160))],h:[S([0,0],[0,1]),S([0,.6],A(.5,.6,.5,.3,180,360),[1,1])],i:[S([.5,.32],[.5,1]),[[.5,.06]]],j:[S([.65,.3],[.65,.8],A(.32,.8,.33,.2,0,160)),[[.65,.05]]],k:[S([0,0],[0,1]),S([1,.3],[0,.75]),S([.35,.58],[1,1])],l:[S([.5,0],[.5,1])],m:[S([0,0],[0,1]),S([0,.35],A(.25,.35,.25,.35,180,360),[.5,1]),S([.5,.35],A(.75,.35,.25,.35,180,360),[1,1])],n:[S([0,0],[0,1]),S([0,.4],A(.5,.4,.5,.4,180,360),[1,1])],o:[A(.5,.5,.5,.5,-90,-450)],p:[S([0,0],[0,1]),A(.5,.35,.5,.35,180,540)],q:[A(.5,.35,.5,.35,0,-360),S([1,0],[1,1])],r:[S([0,0],[0,1]),S([0,.45],[.3,.1],[.65,0],[1,.05])],s:[S(A(.5,.26,.45,.26,-20,-270),A(.5,.76,.5,.24,-90,160))],t:[S([.4,0],[.4,.85],A(.7,.85,.3,.15,180,90)),S([0,.3],[.9,.3])],u:[S([0,0],[0,.6],A(.45,.6,.45,.4,180,0)),S([1,0],[1,1])],v:[S([0,0],[.5,1],[1,0])],w:[S([0,0],[.25,1],[.5,.15],[.75,1],[1,0])],x:[S([0,0],[1,1]),S([1,0],[0,1])],y:[S([0,0],[.5,.7]),S([1,0],[.5,.7],[.3,.95],[0,1])],z:[S([0,0],[1,0],[0,1],[1,1])]};
+const enye=d=>d.map(s=>s.map(([x,y])=>[x,.28+.72*y])).concat([[[.1,.12],[.35,.02],[.65,.12],[.9,.02]]]); // Ñ = N + tilde stroke
+const DEF=ch=>ch==='Ñ'?enye(U.N):ch==='ñ'?enye(L.n):U[ch]||L[ch]||[];
+const up=ch=>ch!==ch.toLowerCase();
+const frame=ch=>up(ch)?[0,1]:'bdfhklti'.includes(ch)?[0,.7]:ch==='j'?[0,1]:'gpqy'.includes(ch)?[.3,1]:ch==='ñ'?[.1,.7]:[.3,.7];
+const wr=ch=>'Iijl'.includes(ch)?.28:'MWmw'.includes(ch)?.85:up(ch)?.62:.52;
+function dense(p){const o=[p[0]];for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],n=Math.ceil(dd(a,b)/5);for(let k=1;k<=n;k++)o.push({x:a.x+(b.x-a.x)*k/n,y:a.y+(b.y-a.y)*k/n})}return o}
+function fit(){const r=cv.parentElement.getBoundingClientRect();cv.width=r.width;cv.height=r.height}
+function build(){if(!cv.width)return;const t=[...disp()],ws=t.map(wr),gap=.16,tot=ws.reduce((a,b)=>a+b,0)+gap*(t.length-1),H=Math.min(cv.height*.8,cv.width*.92/tot);
+  let x=cv.width/2-H*tot/2;const top=cv.height/2-H/2;strokes=[];
+  t.forEach((ch,i)=>{const[f0,f1]=frame(ch),w=ws[i]*H,y0=top+f0*H,h=(f1-f0)*H;DEF(ch).forEach(d=>strokes.push(dense(d.map(([a,b])=>({x:x+a*w,y:y0+b*h})))));x+=w+gap*H});
+  tol=Math.max(20,H*.085)*CONFIG.strictness}
+
+// DRAWING + STRICT CHECKING 
+function wipe(){hist=[];redo=[];cur=null;drawing=false}
+function draw(){if(!cv.width)return;const s=getComputedStyle(document.body),fg=s.getPropertyValue('--fg').trim(),tr=s.getPropertyValue('--tr').trim();
+  c.clearRect(0,0,cv.width,cv.height);c.lineCap=c.lineJoin='round';
+  const P=g=>{c.beginPath();c.moveTo(g[0].x,g[0].y);g.length>1?g.slice(1).forEach(p=>c.lineTo(p.x,p.y)):c.lineTo(g[0].x+.1,g[0].y)};
+  strokes.forEach(g=>{P(g);c.globalAlpha=.22;c.strokeStyle=fg;c.lineWidth=tol*2;c.stroke();c.globalAlpha=1;c.setLineDash([14,10]);c.lineWidth=4;c.stroke();c.setLineDash([])});
+  c.strokeStyle=tr;c.lineWidth=Math.max(14,tol*.9);hist.forEach(p=>{P(p);c.stroke()});if(cur){P(cur.pts);c.stroke()}
+  if(demo){strokes.forEach((g,i)=>{if(i<=demo.i){P(g.slice(0,i<demo.i?g.length:demo.k+1));c.stroke()}});const g=strokes[demo.i],p=g&&g[Math.min(demo.k,g.length-1)];if(p){c.fillStyle=fg;c.beginPath();c.arc(p.x,p.y,tol*.8,0,7);c.fill()}return}
+  c.font='900 20px sans-serif';c.textAlign='center';c.textBaseline='middle';
+  for(let i=strokes.length-1;i>=hist.length;i--){const g=strokes[i],n=i-hist.length+1;c.fillStyle='#080';c.beginPath();c.arc(g[0].x,g[0].y,i===hist.length?24:16,0,7);c.fill();c.lineWidth=3;c.strokeStyle='#FFF';c.stroke();c.fillStyle='#FFF';c.fillText(n,g[0].x,g[0].y+1)}}
+const pos=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*cv.width/r.width,y:(e.clientY-r.top)*cv.height/r.height}};
+const WIN=()=>Math.ceil((tol*2.5+40)/5);
+function bad(m){drawing=false;cur=null;flash(0);say(m);draw()} // a wrong stroke is thrown away (auto-undo)
+cv.addEventListener('pointerdown',e=>{e.preventDefault();stopDemo();if(drawing)return;const si=hist.length;if(si>=strokes.length)return;const p=pos(e);
+  if(dd(p,strokes[si][0])>Math.max(tol*1.6,34))return bad(f().start(1)); // must begin at the next green dot
+  cur={si,k:0,pts:[p]};drawing=true;cv.setPointerCapture(e.pointerId);draw()});
+cv.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const g=strokes[cur.si],p=pos(e),lo=Math.max(0,cur.k-4),hi=Math.min(g.length-1,cur.k+WIN());let b=-1,bd=1e9;
+  for(let i=lo;i<=hi;i++){const d=dd(p,g[i]);if(d<bd){bd=d;b=i}}
+  if(bd>tol)return bad(rnd(f().off)); // left the path, or went the wrong way / skipped ahead
+  cur.k=Math.max(cur.k,b);cur.pts.push(p);draw()});
+function upEv(){if(!drawing)return;drawing=false;const g=strokes[cur.si];
+  if(cur.k<g.length-1-Math.ceil(tol*.16)){cur=null;draw();say(f().end);return}
+  hist.push(cur.pts);redo=[];cur=null;draw();if(hist.length===strokes.length)celebrate();else say(rnd(f().good))}
+cv.addEventListener('pointerup',upEv);cv.addEventListener('pointercancel',upEv);
+function celebrate()
+{flash(1);say(f().done(cl()));setTimeout(()=>{if(scr==='write'&&hist.length===strokes.length)step(1)},2800)} // next letter after success
+function undo(){if(hist.length){redo.push(hist.pop());draw();say('Undo')}}
+function redoS(){if(redo.length){hist.push(redo.pop());draw();if(hist.length===strokes.length)celebrate()}}
+function clr(){stopDemo();wipe();draw();say('Cleared')}
+function toggleShow(){if(demo)return stopDemo();wipe();demo={i:0,k:0};say(f().watch);setTimeout(tick,1200)}
+function tick(){if(!demo)return;const g=strokes[demo.i],steps=[1,2,3,5,8];demo.k+=steps[Number($('demoSpeed').value)-1];if(demo.k>=g.length){demo.i++;demo.k=0;if(demo.i>=strokes.length){demo=null;draw();say(f().turn);return}}draw();demo.r=requestAnimationFrame(tick)}
+function stopDemo(){if(demo){cancelAnimationFrame(demo.r);demo=null;draw()}}
+addEventListener('resize',()=>{if(scr==='write'){fit();wipe();build();draw()}});
+applySettings();
+say('Welcome to Alpha-Braille Learning. You are on the home screen. Choose a button to hear its name, then press SELECT to continue.');
+
+</script>
+
+</body>
+
+</html>
